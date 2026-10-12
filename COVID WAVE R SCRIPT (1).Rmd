@@ -1,0 +1,194 @@
+---
+title: "covid waves"
+author: "Luke Jackson & Ben Hamilton"
+date: "2025-12-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+
+```{r}
+library(BallMapper)
+#load dataset
+data <- read.csv("C:/Users/ljack/Documents/ALLWAVE normal.csv",
+                 check.names = FALSE, stringsAsFactors = FALSE)
+
+#Define Embedding Variables (The Shape)
+embedding_cols <- c("Population Density",
+                    "Median Age 2019",
+                    "GVA",
+                    "Average Gross Pay",
+                    "GDP per Capita",
+                    "Average Annual Hours Worked")
+
+data_to_normalize <- data[, embedding_cols]
+
+#log transform & normalize to reduce effect of outliers
+cols_to_log <- c("Population Density", "GVA", "Average Gross Pay", "GDP per Capita")
+for (col in cols_to_log) {
+  if (col %in% names(data_to_normalize)) {
+    data_to_normalize[[col]] <- log(data_to_normalize[[col]] + 1)
+  }
+}
+
+norm_points <- as.data.frame(lapply(data_to_normalize, function(x) {
+  (x - min(x, na.rm=TRUE)) / (max(x, na.rm=TRUE) - min(x, na.rm=TRUE))
+}))
+points <- as.matrix(norm_points)
+
+case_columns <- c("Total confirmed cases of COVID-19 per million people  20/03/20",
+                  "Total confirmed cases of COVID-19 per million people 24/08/20",
+                  "Total confirmed cases of COVID-19 per million people 12/04/2021")
+#titles for plots
+plot_titles <- c("Start of Wave 1", "Start of Wave 2", "End of Wave 2")
+
+#loop for different waves
+for (i in seq_along(case_columns)) {
+  col_name <- case_columns[i]
+  plot_title <- plot_titles[i]
+  
+  if (col_name %in% colnames(data)) {
+    print(paste("Generating plot for:", plot_title))
+    
+    # ball mapper construction
+    values <- matrix(data[[col_name]], ncol = 1)
+    BM <- BallMapper(points, values, epsilon = 0.275
+                     )
+    
+    ColorIgraphPlot(BM)
+    title(main = paste("Ball Mapper Graph -", plot_title))
+    
+    # extract countries in each ball
+    ball_countries <- lapply(BM$points_covered_by_landmarks, function(indices) {
+      data$Country[indices] 
+    })
+    
+    ball_map <- data.frame(
+      Wave = plot_title,
+      Ball_ID = seq_along(ball_countries),
+      Countries = sapply(ball_countries, function(x) paste(x, collapse = ", "))
+    )
+    
+    # print ball to country map
+    cat("\n--- Ball to Country Mapping for:", plot_title, "---\n")
+    print(ball_map)
+    
+    # output latex table
+    cat("\n\\begin{table}[h]\n")
+    cat("\\centering\n")
+    cat("\\begin{tabular}{|c|c|p{8cm}|}\n")
+    cat("\\hline\n")
+    cat("Wave & Ball ID & Countries \\\\\n")
+    cat("\\hline\n")
+    
+    for (j in seq_len(nrow(ball_map))) {
+      cat(ball_map$Wave[j], " & ", ball_map$Ball_ID[j], " & ", ball_map$Countries[j], " \\\\\n")
+      cat("\\hline\n")
+    }
+    
+    cat("\\end{tabular}\n")
+    cat("\\caption{Ball to Country Mapping for ", plot_title, "}\n")
+    cat("\\end{table}\n\n")
+  }
+}
+
+```
+```{r}
+library(BallMapper)
+
+#load dataset
+data <- read.csv("C:/Users/ljack/Documents/ALLWAVE normal.csv",
+                 check.names = FALSE, stringsAsFactors = FALSE)
+
+#define embedding variables (the shape)
+embedding_cols <- c("Population Density",
+                    "Median Age 2019",
+                    "GVA",
+                    "Average Gross Pay",
+                    "GDP per Capita",
+                    "Average Annual Hours Worked")
+
+data_to_normalize <- data[, embedding_cols]
+
+#log transform & normalize to reduce effect of outliers
+cols_to_log <- c("Population Density", "GVA", "Average Gross Pay", "GDP per Capita")
+for (col in cols_to_log) {
+  if (col %in% names(data_to_normalize)) {
+    data_to_normalize[[col]] <- log(data_to_normalize[[col]] + 1)
+  }
+}
+
+norm_points <- as.data.frame(lapply(data_to_normalize, function(x) {
+  (x - min(x, na.rm=TRUE)) / (max(x, na.rm=TRUE) - min(x, na.rm=TRUE))
+}))
+points <- as.matrix(norm_points)
+
+#colouring, log(Population Density)
+values <- matrix(log(data[["Population Density"]] + 1), ncol = 1)
+
+# ball mapper construction
+BM <- BallMapper(points, values, epsilon = 0.3)
+
+ColorIgraphPlot(BM)
+title("Ball Mapper Graph coloured by log(Population Density)")
+text(BM$vertices[,1], BM$vertices[,2],
+     labels = seq_along(BM$vertices),
+     pos = 3, cex = 0.7, col = "black")
+
+```
+
+```{r}
+library(BallMapper)
+
+#load dataset
+data <- read.csv("C:/Users/ljack/Documents/ALLWAVE normal.csv",
+                 check.names = FALSE, stringsAsFactors = FALSE)
+
+#define embedding variables (the shape)
+embedding_cols <- c("Population Density",
+                    "Median Age 2019",
+                    "GVA",
+                    "Average Gross Pay",
+                    "GDP per Capita",
+                    "Average Annual Hours Worked")
+
+data_to_normalize <- data[, embedding_cols]
+
+#log transform & normalize to reduce effect of outliers
+cols_to_log <- c("Population Density", "GVA", "Average Gross Pay", "GDP per Capita")
+for (col in cols_to_log) {
+  if (col %in% names(data_to_normalize)) {
+    data_to_normalize[[col]] <- log(data_to_normalize[[col]] + 1) # log transform
+  }
+}
+
+norm_points <- as.data.frame(lapply(data_to_normalize, function(x) {
+  (x - min(x, na.rm=TRUE)) / (max(x, na.rm=TRUE) - min(x, na.rm=TRUE))
+}))
+points <- as.matrix(norm_points)
+
+#colouring, log(GDP per Capita)
+if (!is.null(data[["GDP per Capita"]])) {
+  values <- matrix(log(as.numeric(gsub(",", "", data[["GDP per Capita"]])) + 1), ncol = 1)
+} else {
+  stop("Dataset must contain a 'GDP per Capita' column.")
+}
+
+# ball mapper construction
+BM <- BallMapper(points, values, epsilon = 0.3)
+
+ColorIgraphPlot(BM)
+title("Ball Mapper Graph coloured by log(GDP per Capita)")
+text(BM$vertices[,1], BM$vertices[,2],
+     labels = seq_along(BM$vertices),
+     pos = 3, cex = 0.7, col = "black")
+
+```
+
+
